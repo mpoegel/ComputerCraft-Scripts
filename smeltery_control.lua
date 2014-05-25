@@ -14,6 +14,12 @@ local casting_tables = smeltery_config.casting_tables
 local monitor_loc = smeltery_config.monitor_loc
 local storage_tanks = smeltery_config.storage_tanks
 
+-- for pouring...
+-- 1 ingot is 144 mb
+local ingot = 144
+-- one block is 9 ingots
+local block = ingot * 9
+
 -- wrap the advanced monitor
 m = peripheral.wrap(monitor_loc)
 -- start with a clear screen
@@ -27,19 +33,19 @@ function printMain()
   button.clearTable()
   m.clear()
   button.heading("Smeltery Control")
-  button.setTable("Pour Ingots", pourIngots,   '', 7,22, 3, 3)
-  button.setTable("Pour Blocks", pourBlocks,   '', 7,22, 5, 5)
-  button.setTable("Fill Tank",   printLiquids, '', 7,22, 7, 7)
-  button.setTable("Store Tank",  emptyTank,    '', 7,22, 9, 9)
-  button.setTable("Void Tank",   voidTank,     '', 7,22,11,11)
-  button.setTable("Exit",        endControl,   '', 7,22,13,13)
+  button.setTable("Smelt", nothing,      '', 7,22, 3, 3)
+  button.setTable("Pour",  printPour,    '', 7,22, 5, 5)
+  button.setTable("Fill",  printLiquids, '', 7,22, 7, 7)
+  button.setTable("Store", emptyTank,    '', 7,22, 9, 9)
+  button.setTable("Void",  voidTank,     '', 7,22,11,11)
+  button.setTable("Exit",  endControl,   '', 7,22,13,13)
   
   printLevel()
   button.screen()
 end
 
 -- liquids menu of all liquids that can be stored
-liquid_count = 0
+local liquid_count = 0
 function printLiquids()
   button.clearTable()
   m.clear()
@@ -47,39 +53,38 @@ function printLiquids()
 	
 	local i = 0
 	local k = 0
+	-- displays only 5 options at a time
 	for liquid,color in pairs(smeltery_config.liquids) do
 		if (i >= liquid_count and i < liquid_count + 5) then
-			button.setTable(liquid, getMolten, color,3+k,3+k)
-			k += 1
+			button.setTable(liquid, getMolten, color, 6,23,3+k,3+k)
+			k = k + 2
 		end
-		i += 1
+		i = i + 1
 	end
-	
+
 	liquid_count = liquid_count + 5
-	if (liquid_count >= #smeltery_config.liquids) then
+	-- go back to the begining of the list if we step over the end
+	if (liquid_count >= getTableLength(smeltery_config.liquids)) then
 		liquid_count = 0
 	end
 	
-  -- button.setTable("Aluminium Brass", getMolten,     colors.magenta,   6,23, 3, 3)
-  -- button.setTable("Molten Bronze",   getMolten,     colors.lightBlue, 6,23, 5, 5)
-  -- button.setTable("Molten Tin",      getMolten,     colors.yellow,    6,23, 7, 7)
-  -- button.setTable("Molten Obsidian", getMolten,     colors.white,     6,23, 9, 9)
-  -- button.setTable("Molten Glass",    getMolten,     colors.orange,    6,23,11,11)
-  button.setTable("Next",            printLiquids, '',               6,23,13,13)
-  button.setTable("Back",            printMain,     '',               6,23,15,15)
-  
+  button.setTable("Next Page", printLiquids, '', 6,23,13,13)
+  button.setTable("Main",      printMain,    '', 6,23,15,15)
   printLevel()
   button.screen()
 end
 
--- second menu for liquids
-function printLiquids1()
+-- print a menu of all the pouring options
+function printPour()
 	button.clearTable()
 	m.clear()
-	button.heading("Smeltery Control")
-	button.setTable("Next", nothing,      '', 6,23,13,13)
-	button.setTable("Back", printLiquids, '', 6,23,15,15)
+	button.heading("Pouring Options")
 	
+	button.setTable("Ingot", pourIngots, '', 6,23, 3, 3)
+	button.setTable("Block", pourBlocks, '', 6,23, 5, 5)
+	
+	button.setTable("Next Page", nothing,   '', 6,23,13,13)
+	button.setTable("Main",      printMain, '', 6,23,15,15)
 	printLevel()
 	button.screen()
 end
@@ -100,42 +105,10 @@ end
 ---------------------------------------
 
 ---------------------------------------
--- Main Menu Functions 
-function pourBlocks()
-  button.toggleButton("Pour Blocks")
-  local tank = getTankInfo()
-  local level = tonumber(searchInfo(tank, 'amount'))
-  local ingot = 144
-  local block = ingot * 9
-  while level >= block do
-		rs.setBundledOutput(casting_tables, colors.orange)
-    sleep(1)
-		rs.setBundledOutput(casting_tables, 0)
-    sleep(1)
-		tank = getTankInfo()
-		level = tonumber(searchInfo(tank, 'amount'))
-  end
-  button.toggleButton("Pour Blocks")
-end
-
-function pourIngots()
-  button.toggleButton("Pour Ingots")
-  local tank = getTankInfo()
-  local level = tonumber(searchInfo(tank, 'amount'))
-  local ingot = 144
-  while level >= ingot do
-		rs.setBundledOutput('bottom', colors.white)
-    sleep(2)
-		rs.setBundledOutput('bottom',0)
-    sleep(2)
-		tank = getTankInfo()
-		level = tonumber(searchInfo(tank, 'amount'))
-  end
-  button.toggleButton("Pour Ingots")
-end
+-- Main Menu Functions
 
 function emptyTank()
-  button.toggleButton("Store Tank")
+  button.toggleButton("Store")
   local tank = getTankInfo()
   local level = tonumber(searchInfo(tank, 'amount'))
   local ingot = 144
@@ -147,15 +120,15 @@ function emptyTank()
 	tank = getTankInfo()
 	level = tonumber(searchInfo(tank, 'amount'))
   end
-  button.toggleButton("Store Tank")
+  button.toggleButton("Store")
 end
 
 function voidTank()
-  button.toggleButton("Void Tank")
+  button.toggleButton("Void")
   rs.setBundledOutput('bottom', colors.lightBlue)
   sleep(3)
   rs.setBundledOutput('bottom', 0)
-  button.toggleButton("Void Tank")
+  button.toggleButton("Void")
 end
 
 function endControl()
@@ -178,6 +151,45 @@ function getMolten(name, color)
   button.toggleButton(name)
 end
 -- end sub menu for liquids
+
+---------------------------------------
+-- pouring functions
+
+function pourBlocks()
+  button.toggleButton("Block")
+  local tank = getTankInfo()
+  local level = tonumber(searchInfo(tank, 'amount'))
+  local ingot = 144
+  local block = ingot * 9
+  while level >= block do
+		rs.setBundledOutput(casting_tables, colors.orange)
+    sleep(1)
+		rs.setBundledOutput(casting_tables, 0)
+    sleep(1)
+		tank = getTankInfo()
+		level = tonumber(searchInfo(tank, 'amount'))
+  end
+  button.toggleButton("Block")
+end
+
+function pourIngots()
+  button.toggleButton("Ingot")
+  local tank = getTankInfo()
+  local level = tonumber(searchInfo(tank, 'amount'))
+  local ingot = 144
+  while level >= ingot do
+		rs.setBundledOutput('bottom', colors.white)
+    sleep(2)
+		rs.setBundledOutput('bottom',0)
+    sleep(2)
+		tank = getTankInfo()
+		level = tonumber(searchInfo(tank, 'amount'))
+  end
+  button.toggleButton("Ingot")
+end
+
+-- end pouring functions
+---------------------------------------
 
 -- communication with tank
 function getTankInfo()
@@ -221,6 +233,13 @@ function nothing()
   -- place holder
 end
 
+function getTableLength(t)
+	local count = 0
+	for k,v in pairs(t) do
+		count = count + 1
+	end
+	return count
+end
 
 printMain()
 -- main loop
