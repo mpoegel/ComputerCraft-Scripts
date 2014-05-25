@@ -1,4 +1,13 @@
-local mon = peripheral.wrap("back")
+---------------------------------------
+-- original by Direwolf20
+-- https://www.youtube.com/user/direwolf20
+-- 
+-- modified to accept function arguments
+---------------------------------------
+
+os.loadAPI("smeltery_config")
+local mon = peripheral.wrap(smeltery_config.monitor_loc)
+s
 mon.setTextScale(1)
 mon.setTextColor(colors.white)
 local button={}

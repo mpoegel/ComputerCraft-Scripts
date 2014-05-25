@@ -28,6 +28,13 @@ liquids = {}
 -- colors are:
 -- colors.white, .magenta, ........
 liquids["Aluminum Brass"] = colors.white
+liquids["Molten Glass"] = colors.magenta
+liquids["Molten Obsidian"] = colors.orange
+liquids["Molten Bronze"] = colors.lightBlue
+liquids["Molten Tin"] = colors.yellow
+liquids["Molten Copper"] = colors.lime
+liquids["Molten Emerald"] = colors.pink
+liquids["Molten Diamond"] = colors.gray
 
 
 -- list of all the pouring options and the 
