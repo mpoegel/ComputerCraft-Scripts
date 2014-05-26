@@ -24,6 +24,12 @@ rednet_modem = "bottom"
 -- location of the smeltery drain relative to
 -- the peripheral proxy
 tank_loc = "top"
+-- name of the smeltery drain peripheral
+-- (adjust the number suffix as needed!)
+drain_name = "tconstruct_smelterydrain_0"
+-- name of the request pipe peripheral
+-- (adjust the number suffix as needed!)
+req_pipe_name = "LogisticsPipes:Request_3"
 
 -- empty tank color
 empty_tank = colors.purple

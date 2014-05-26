@@ -33,7 +33,7 @@ function printMain()
   button.clearTable()
   m.clear()
   button.heading("Smeltery Control")
-  button.setTable("Smelt", nothing,      '', 7,22, 3, 3)
+  button.setTable("Smelt", printSmelt,   '', 7,22, 3, 3)
   button.setTable("Pour",  printPour,    '', 7,22, 5, 5)
   button.setTable("Fill",  printLiquids, '', 7,22, 7, 7)
   button.setTable("Store", emptyTank,    '', 7,22, 9, 9)
@@ -42,6 +42,43 @@ function printMain()
   
   printLevel()
   button.screen()
+end
+
+-- show all the raw materials in storage
+local smelt_count = 0
+function printSmelt()
+	local r = peripheral.wrap(smeltery_config.req_pipe_name)
+	-- get a table of all the available items in storage
+	local data = r.getAvailableItems()
+	
+	button.clearTable()
+	m.clear()
+	button.heading("Smelting Options")
+	
+	local i = 0
+	local k = 0
+	for num,mat_table in pairs(data) do
+		if (i >= smelt_count and i < smelt_count + 5) then
+			local itemID = mat_table[1]
+			local name = r.getUnlocalizedName(itemID)
+			-- make sure the name can fit on a button
+			name = string.sub(name,1,18)
+			local amount = mat_table[2]
+			button.setTable(name, goSmelt, itemID, 6,23,3+k,3+k)
+			k = k + 2
+		end
+		i = i + 1
+	end
+	
+	smelt_count = smelt_count + 5
+	if (smelt_count >= getTableLength(data)) then
+		smelt_count = 0
+	end
+	
+	button.setTable("Next Page", printSmelt, '', 6,23,13,13)
+	button.setTable("Main",      printMain,  '', 6,23,15,15)
+	printLevel()
+	button.screen()	
 end
 
 -- liquids menu of all liquids that can be stored
@@ -132,9 +169,9 @@ function emptyTank()
   button.toggleButton("Store")
   local tank = getTankInfo()
   local level = tonumber(searchInfo(tank, 'amount'))
+	rs.setBundledOutput(casting_tables, smeltery_config.empty_tank)
   while level > 0 do
-		rs.setBundledOutput(casting_tables, smeltery_config.empty_tank)
-    sleep(2)
+    sleep(1)
 		tank = getTankInfo()
 		level = tonumber(searchInfo(tank, 'amount'))
   end
@@ -143,11 +180,31 @@ function emptyTank()
 end
 
 function voidTank()
-  button.toggleButton("Void")
-  rs.setBundledOutput(casting_tables, smeltery_config.void_tank)
-  sleep(3)
-  rs.setBundledOutput(casting_tables, 0)
-  button.toggleButton("Void")
+  button.clearTable()
+	m.clear()
+	button.heading("Confirm Action to Void Tank")
+	
+	button.setTable("Void Tank", voidTankConfirmed, '', 6,23, 9, 9)
+	button.setTable("Cancel",    printMain,         '', 6,23,12,12)
+	
+	printLevel()
+	button.screen()
+end
+
+function voidTankConfirmed(b)
+	button.toggleButton(b)
+	local tank = getTankInfo()
+	local level = tonumber(searchInfo(tank, "amount"))
+	rs.setBundledOutput(casting_tables, smeltery_config.void_tank)
+	while level > 0 do
+		sleep(1)
+		tank = getTankInfo()
+		level = tonumber(searchInfo(tank, "amount"))
+	end
+	rs.setBundledOutput(casting_tables, 0)
+	button.toggleButton(b)
+	
+	printMain()
 end
 
 function endControl()
@@ -161,7 +218,38 @@ end
 -- end Main Menu Functions
 ---------------------------------------
 
--- liquids sub menu functions --
+---------------------------------------
+-- smelting materials
+function goSmelt(name,itemID)
+	button.clearTable()
+	m.clear()
+	button.heading("Select Amount to Smelt")
+	
+	button.setTable("1",  sendSmelt, itemID, 6,23, 3, 3)
+	button.setTable("8",  sendSmelt, itemID, 6,23, 5, 5)
+	button.setTable("16", sendSmelt, itemID, 6,23, 7, 7)
+	button.setTable("32", sendSmelt, itemID, 6,23, 9, 9)
+	button.setTable("64", sendSmelt, itemID, 6,23,11,11)
+	
+	button.setTable("Cancel", printSmelt, '',  6,23,15,15)
+	printLevel()
+	button.screen()	
+end
+
+function sendSmelt(num, itemID)
+	local r = peripheral.wrap(smeltery_config.req_pipe_name)
+	num = tonumber(num)
+	r.makeRequest(itemID, num)
+	button.setTable("Request Sent", nothing, '', 6,23,13,13)
+	button.screen()
+	sleep(1)
+	printMain()
+end
+
+---------------------------------------
+
+---------------------------------------
+-- liquids sub menu functions 
 function getMolten(name, color)
   button.toggleButton(name)
   rs.setBundledOutput(storage_tanks, color)
@@ -170,6 +258,8 @@ function getMolten(name, color)
   button.toggleButton(name)
 end
 -- end sub menu for liquids
+---------------------------------------
+
 
 ---------------------------------------
 -- pouring functions
@@ -222,7 +312,7 @@ function getTankInfo()
   local data = {}
   rednet.send(tank)
 	
-	local drain = peripheral.wrap("tconstruct_smelterydrain_0")
+	local drain = peripheral.wrap(smeltery_config.drain_name)
 	local data = drain.getTankInfo(smeltery_config.tank_loc)
   
   rednet.close(smeltery_config.rednet_modem)
@@ -241,7 +331,6 @@ function searchInfo(t, s)
 end
 -- end communication with tank
 
-
 function getClick()
    event,side,x,y = os.pullEvent("monitor_touch")
    if not button.checkxy(x,y) then printLevel() end
@@ -259,6 +348,11 @@ function getTableLength(t)
 	end
 	return count
 end
+
+
+
+---------------------------------------
+---------------------------------------
 
 printMain()
 -- main loop
