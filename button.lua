@@ -7,7 +7,6 @@
 
 os.loadAPI("smeltery_config")
 local mon = peripheral.wrap(smeltery_config.monitor_loc)
-s
 mon.setTextScale(1)
 mon.setTextColor(colors.white)
 local button={}

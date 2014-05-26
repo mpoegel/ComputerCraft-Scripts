@@ -75,15 +75,36 @@ function printLiquids()
 end
 
 -- print a menu of all the pouring options
+local pour_count = 0
 function printPour()
 	button.clearTable()
 	m.clear()
 	button.heading("Pouring Options")
 	
-	button.setTable("Ingot", pourIngots, '', 6,23, 3, 3)
-	button.setTable("Block", pourBlocks, '', 6,23, 5, 5)
+	-- first screen is always the same
+	if (pour_count == 0) then
+		button.setTable("Ingot", pourIngots, '', 6,23, 3, 3)
+		button.setTable("Block", pourBlocks, '', 6,23, 5, 5)
+	else
+		local i = 0
+		local k = 0
+		-- show the custom casts from the config
+		for cast,color in pairs(smeltery_config.casts) do
+			if (i >= pour_count-5 and i < pour_count) then
+				button.setTable(cast, pourCast, color, 6,23,3+k,3+k)
+				k = k + 2
+			end
+			i = i + 1
+		end
+	end
 	
-	button.setTable("Next Page", nothing,   '', 6,23,13,13)
+	pour_count = pour_count + 5
+	-- link back to the front of the list if we step off
+	if (pour_count-5 >= getTableLength(smeltery_config.casts)) then
+		pour_count = 0
+	end
+	
+	button.setTable("Next Page", printPour,   '', 6,23,13,13)
 	button.setTable("Main",      printMain, '', 6,23,15,15)
 	printLevel()
 	button.screen()
@@ -91,14 +112,14 @@ end
 
 -- print the amount and contents of the tank
 function printLevel()
-  -- tank = getTankInfo()
-  -- term.setCursorPos(3,16)
+  tank = getTankInfo()
+  term.setCursorPos(3,16)
 	-- scratch out the old data
-  -- button.label(7, 17, '                    ')
-  -- button.label(7, 18, '                    ')
+  button.label(7, 17, '                    ')
+  button.label(7, 18, '                    ')
 	-- print the new
-  -- button.label(7, 17, searchInfo(tank,'name'))
-  -- button.label(7, 18, 'Level:'..searchInfo(tank,'amount'))
+  button.label(7, 17, searchInfo(tank,'name'))
+  button.label(7, 18, 'Level:'..searchInfo(tank,'amount'))
 end
 
 -- end menu printing 
@@ -111,23 +132,21 @@ function emptyTank()
   button.toggleButton("Store")
   local tank = getTankInfo()
   local level = tonumber(searchInfo(tank, 'amount'))
-  local ingot = 144
-  while level >= ingot do
-	rs.setBundledOutput('bottom', colors.black)
+  while level > 0 do
+		rs.setBundledOutput(casting_tables, smeltery_config.empty_tank)
     sleep(2)
-	rs.setBundledOutput('bottom',0)
-    sleep(2)
-	tank = getTankInfo()
-	level = tonumber(searchInfo(tank, 'amount'))
+		tank = getTankInfo()
+		level = tonumber(searchInfo(tank, 'amount'))
   end
+	rs.setBundledOutput(casting_tables,0)
   button.toggleButton("Store")
 end
 
 function voidTank()
   button.toggleButton("Void")
-  rs.setBundledOutput('bottom', colors.lightBlue)
+  rs.setBundledOutput(casting_tables, smeltery_config.void_tank)
   sleep(3)
-  rs.setBundledOutput('bottom', 0)
+  rs.setBundledOutput(casting_tables, 0)
   button.toggleButton("Void")
 end
 
@@ -145,9 +164,9 @@ end
 -- liquids sub menu functions --
 function getMolten(name, color)
   button.toggleButton(name)
-  rs.setBundledOutput('right', color)
-  sleep(3)
-  rs.setBundledOutput('right', 0)
+  rs.setBundledOutput(storage_tanks, color)
+  sleep(2)
+  rs.setBundledOutput(storage_tanks, 0)
   button.toggleButton(name)
 end
 -- end sub menu for liquids
@@ -159,10 +178,8 @@ function pourBlocks()
   button.toggleButton("Block")
   local tank = getTankInfo()
   local level = tonumber(searchInfo(tank, 'amount'))
-  local ingot = 144
-  local block = ingot * 9
   while level >= block do
-		rs.setBundledOutput(casting_tables, colors.orange)
+		rs.setBundledOutput(casting_tables, smeltery_config.block_color)
     sleep(1)
 		rs.setBundledOutput(casting_tables, 0)
     sleep(1)
@@ -176,11 +193,10 @@ function pourIngots()
   button.toggleButton("Ingot")
   local tank = getTankInfo()
   local level = tonumber(searchInfo(tank, 'amount'))
-  local ingot = 144
   while level >= ingot do
-		rs.setBundledOutput('bottom', colors.white)
+		rs.setBundledOutput(casting_tables, smeltery_config.ingot_color)
     sleep(2)
-		rs.setBundledOutput('bottom',0)
+		rs.setBundledOutput(casting_tables,0)
     sleep(2)
 		tank = getTankInfo()
 		level = tonumber(searchInfo(tank, 'amount'))
@@ -188,26 +204,29 @@ function pourIngots()
   button.toggleButton("Ingot")
 end
 
+function pourCast(name, color)
+	button.toggleButton(name)
+	rs.setBundledOutput(casting_tables, color)
+	sleep(1)
+	rs.setBundledOutput(casting_tables, 0)
+	button.toggleButton(name)
+end
+
 -- end pouring functions
 ---------------------------------------
 
--- communication with tank
+-- information on what's in the tank
 function getTankInfo()
-  rednet.open('top')
+  rednet.open(smeltery_config.rednet_modem)
   local tank = 1
   local data = {}
   rednet.send(tank)
-
-  while true do
-    local id, status = rednet.receive(.2)
-	if status == 'incoming' then
-	  local id, name = rednet.receive(.5)
-	  local id, value = rednet.receive(.5)
-	  data[name] = value
-	else break end
-  end
-  rednet.close('top')
-  return data
+	
+	local drain = peripheral.wrap("tconstruct_smelterydrain_0")
+	local data = drain.getTankInfo(smeltery_config.tank_loc)
+  
+  rednet.close(smeltery_config.rednet_modem)
+  return data[1]
 end
 
 function searchInfo(t, s)
